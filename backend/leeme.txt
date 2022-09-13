@@ -1,0 +1,2 @@
+Una vez descargada la carpeta backend, a través de consola, entra en la carpeta backend y ejecuta el comando npm Install para que se te cree la carpeta node_modules.
+Te descargara nodemon, es como node(para ejecutar) pero no tienes que andar quitandolo y poniéndolo, según guardas los cambios, se actualiza.
