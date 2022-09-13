@@ -1,0 +1,220 @@
+<template>
+    <v-container>
+        <v-card
+        class="mx-auto"
+        max-width="700"
+        color="blue lighten-3"
+        >
+            <!-- Separador -->
+            <v-spacer></v-spacer>
+            <v-container fluid>
+                <v-row dense> 
+                <!-- Lista de productos mostrados -->
+                <v-col
+                    v-for="card in cards"
+                    :key="card.title"
+                
+                > 
+                    <v-card>
+                    <v-img
+                    :src="card.foto"
+                    class="white--text align-end"
+                    gradient="to bottom, rgba(0,0,0,.1), rgba(0,0,0,.5)"
+                    height="300px"
+                    @click="informacionProducto(card.productoIdProducto)"
+                    >
+                    </v-img>
+
+                    <v-card-title v-text="card.nombre"></v-card-title>
+                    <v-card-subtitle v-text="card.estado"></v-card-subtitle>
+                    <v-card-subtitle v-text="card.precio"/>
+
+                    <v-card-actions>
+
+                        <v-dialog v-model="dialog" width="600px">
+                          <template v-slot:activator="{ on }">
+                            <v-btn icon>
+                              <v-icon v-on="on">mdi-delete</v-icon>
+                              </v-btn>
+                            <v-btn icon @click="comprarProducto(card.nombre)">
+                              <v-icon>mdi-cart-outline</v-icon>
+                             
+                            </v-btn>
+                          </template>
+                          <v-card>
+                            <v-card-title>
+                              <span class="headline">Eliminar Producto</span>
+                            </v-card-title>
+                            <v-card-text>¿Está seguro de que desea eliminar este producto con id {{ card.IdProducto}}? Una vez eliminado no se podrá recuperar.</v-card-text>
+                            <v-card-actions>
+                              <v-spacer></v-spacer>
+                              <v-btn color="blue darken-1" text @click="dialog = false">No eliminar</v-btn>
+                              <v-btn color="blue darken-1" text @click="borrarProducto(card.productoIdProducto)">Eliminar</v-btn>
+                            </v-card-actions>
+                          </v-card>
+                        </v-dialog>
+                        <v-spacer></v-spacer>
+
+                        <v-btn
+                        icon
+                        @click="card.show = !card.show"
+                        >
+                        <v-icon>{{ card.show ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                        </v-btn>
+                    </v-card-actions>
+
+                    <v-expand-transition>
+                        <div v-show="card.show">
+                        <v-divider></v-divider>
+                        <v-card-text v-text="card.descripcion"></v-card-text>
+                        </div>
+                    </v-expand-transition>
+                    </v-card>
+                </v-col>
+                </v-row>
+            </v-container>
+            <!-- Separador -->
+            <v-spacer></v-spacer>
+        </v-card>
+    </v-container>
+</template>
+
+<script>
+const axios = require("axios");
+const direccionIp = "http://127.0.0.1:3000";
+export default {
+  data() {
+    return {
+      dialog: null,
+      cards: [],
+      dni: this.$route.query.id,
+    };
+  },
+  mounted() {
+    console.log("Entramos en Lista de deseos:" + this.dni);
+    axios
+      .get(direccionIp + "/traerDeseos", {
+        params: {
+          dni: this.dni,
+        },
+      })
+      .then(response => {
+        this.cards = response.data;
+        //console.log(this.cards[0]);
+      });
+  },
+  methods: {
+    rellenarCartas(respuesta) {
+      //console.log("Tamaño:" + respuesta);
+      let body = {};
+      for (let i = 0; i < respuesta.data.length; i++) {
+        body = {
+          nombre: respuesta.data[i].nombre,
+          descripcion: respuesta.data[i].descripcion,
+          show: false,
+          precio: respuesta.data[i].precio,
+          estado: respuesta.data[i].estado,
+          IdProducto: respuesta.data[i].IdProducto,
+        };
+        console.log(body);
+        console.log("AUX: " + this.aux);
+        //this.cards.push(body);
+      }
+    },
+    recogerDatos(respuesta) {
+      this.datos = respuesta.data;
+      this.nombre = this.datos.nombre;
+      this.descripcion = this.datos.descripcion;
+      this.categoria = this.datos.categoria;
+      this.estado = this.datos.estado;
+      this.precio = this.datos.precio;
+      this.foto = this.datos.foto;
+      console.log("IMG: " + this.foto);
+      this.vendedor = this.datos.vendedor;
+      this.vendido = this.datos.vendido;
+      if (this.datos.show == 0) {
+        this.show = false;
+      } else {
+        this.show = true;
+      }
+    },
+    comprarProducto(nombreProducto) {
+      console.log(
+        "El nombre del producto es:" +
+          nombreProducto +
+          " y el dni es:" +
+          this.dni
+      );
+
+      let body = {
+        dni: this.dni,
+        nombreProducto: nombreProducto,
+      };
+      axios.post(direccionIp + "/comprarProducto", body).then(response => {
+        this.comprobarRespuesta(response.data, nombreProducto);
+      });
+    },
+
+    informacionProducto(pantalla) {
+      console.log("INFOR PRODUCTO CON ID: " + pantalla);
+      this.idProducto = pantalla;
+      this.$router.replace({
+        path: "/informacionProducto/:id",
+        query: { id: this.idProducto },
+      });
+    },
+    borrarProducto(borrado) {
+      console.log("QUIERO BORRAR ESTE PRODUCTO " + borrado);
+      let body = { idProducto: borrado };
+      axios.post(direccionIp + "/eliminarDeseo", body).then(response => {
+        console.log("elminado:" + borrado);
+        this.comprobarRespuestaProductoEliminado(response);
+      });
+
+      this.dialog = false;
+      return false;
+    },
+    comprobarRespuestaProductoEliminado(respuesta) {
+      if (respuesta) {
+        this.cards = [];
+        axios
+          .get(direccionIp + "/traerDeseos", {
+            params: {
+              dni: this.dni,
+            },
+          })
+          .then(response => {
+            this.cards = response.data;
+            //console.log(this.cards[0]);
+          });
+      }
+    },
+    comprobarRespuesta(respuesta) {
+      if (respuesta == "si") {
+        alert("Producto Comprado");
+        this.cards = [];
+        axios
+          .get(direccionIp + "/traerDeseos", {
+            params: {
+              dni: this.dni,
+            },
+          })
+          .then(response => {
+            this.cards = response.data;
+            //console.log(this.cards[0]);
+          });
+        this.$emit("entro", this.dni);
+      } else {
+        console.log(respuesta);
+      }
+    },
+  },
+  computed: {
+    filtrarVendedor: function() {
+      return this.cards.filter(card => {
+        return card.vendedor.match(this.vendedor);
+      });
+    },
+  },
+};
+</script>
